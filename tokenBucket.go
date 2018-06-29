@@ -11,10 +11,12 @@ var (
 	defaultBucketGenRate uint64 = 100
 )
 
+// Token 令牌
 type Token struct {
 	t time.Time
 }
 
+// Bucket 令牌桶
 type Bucket struct {
 	chant chan Token
 	leaky *leaking
@@ -23,6 +25,7 @@ type Bucket struct {
 	one   *sync.Once
 }
 
+// InitBucket 初始化一个令牌桶实现
 func InitBucket(size int, rate uint64) *Bucket {
 	if size <= 0 {
 		size = defaultBucketSize
@@ -39,6 +42,8 @@ func InitBucket(size int, rate uint64) *Bucket {
 	return bucket
 }
 
+// Produce 以恒定速率往桶里面放令牌
+// 此函数多次执行无效
 func (bucket *Bucket) Produce() {
 	bucket.one.Do(func() {
 		bucket.doProduceOnce()
@@ -54,6 +59,7 @@ func (bucket *Bucket) doProduceOnce() {
 	}
 }
 
+// Get 从令牌桶里面取出一个令牌，不阻塞，如果令牌桶为空，返回nil,bucket.err
 func (bucket *Bucket) Get() (*Token, error) {
 	select {
 	case token := <-bucket.chant:
@@ -63,6 +69,7 @@ func (bucket *Bucket) Get() (*Token, error) {
 	}
 }
 
+// Wait 阻塞等待令牌
 func (bucket *Bucket) Wait() (*Token, error) {
 	select {
 	case token := <-bucket.chant:
@@ -71,6 +78,7 @@ func (bucket *Bucket) Wait() (*Token, error) {
 	return nil, bucket.err
 }
 
+// Info 返回令牌桶令牌
 func (bucket *Bucket) Info() map[string]int {
 	info := make(map[string]int, 3)
 	info["len"] = len(bucket.chant)
