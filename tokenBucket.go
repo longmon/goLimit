@@ -18,6 +18,7 @@ type Token struct {
 
 // Bucket 令牌桶
 type Bucket struct {
+	sync.RWMutex
 	chant chan Token
 	leaky *leaking
 	rate  uint64
@@ -60,7 +61,7 @@ func (bucket *Bucket) doProduceOnce() {
 }
 
 // Get 从令牌桶里面取出一个令牌，不阻塞，如果令牌桶为空，返回nil,bucket.err
-func (bucket *Bucket) Get() (*Token, error) {
+func (bucket *Bucket) Take() (*Token, error) {
 	select {
 	case token := <-bucket.chant:
 		return &token, nil
