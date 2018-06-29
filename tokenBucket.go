@@ -54,7 +54,7 @@ func (bucket *Bucket) doProduceOnce() {
 	}
 }
 
-func (bucket *Bucket) Get() (*Token, error) {
+func (bucket *Bucket) Take() (*Token, error) {
 	select {
 	case token := <-bucket.chant:
 		return &token, nil
