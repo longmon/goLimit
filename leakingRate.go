@@ -48,8 +48,11 @@ func (l *leaking) Wait() *time.Time {
 	sleep := l.rate - now.Sub(l.last)
 	if sleep > 0 {
 		time.Sleep(sleep)
+		l.last = now.Add(sleep)
+	}else{
+		l.last = now
 	}
-	l.last = now.Add(sleep)
+	
 	return &l.last
 }
 
