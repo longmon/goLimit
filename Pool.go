@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 )
+
 // Pool是一个预定义的池，在创建的时候设置池的大小与池中没数据时客户端等待的延时
 // 客户端处理事务完成后，可以把数据重新放回池或丢弃
 type Pool struct {
@@ -30,6 +31,7 @@ func NewPool(size uint, waitfor time.Duration) *Pool {
 		errors.New("empty pool"),
 		errors.New(fmt.Sprintf("wait time out on empty pool")),
 	}
+	p.o = &sync.Once{}
 	return p
 }
 
@@ -37,11 +39,12 @@ func NewPool(size uint, waitfor time.Duration) *Pool {
 //本方法多次执行无效
 func (p *Pool) Init(v interface{}) {
 	p.o.Do(func() {
+	loop:
 		for {
 			select {
 			case p.ch <- v:
 			default:
-				break
+				break loop
 			}
 		}
 	})
@@ -59,11 +62,18 @@ func (p *Pool) Take() (interface{}, error) {
 
 // Wait 等待数据，直到超时
 func (p *Pool) Wait() (interface{}, error) {
-	select {
-	case <-time.After(p.wait):
-		return nil, p.err[1]
-	case v := <-p.ch:
-		return v, nil
+	if p.wait == 0 {
+		select {
+		case v := <-p.ch:
+			return v, nil
+		}
+	} else {
+		select {
+		case <-time.After(p.wait):
+			return nil, p.err[1]
+		case v := <-p.ch:
+			return v, nil
+		}
 	}
 }
 
@@ -74,4 +84,12 @@ func (p *Pool) Put(v interface{}) {
 	default:
 		return
 	}
+}
+
+func (p *Pool) Info() map[string]interface{} {
+	info := make(map[string]interface{}, 3)
+	info["cap"] = p.cap
+	info["wait"] = p.wait
+	info["len"] = len(p.ch)
+	return info
 }

@@ -13,9 +13,7 @@ type leaking struct {
 	sync.RWMutex               //同步锁
 	rate         time.Duration //每个请求花费的时间
 	last         time.Time     //上次请求发生的时间
-	sleep        bool          //等待返回 depreated
 	err          error         //错误类型， 因为只有一种错误类型，所以在创建的时候初始了，免得每次Take都创建
-	backlog
 }
 
 // NewLeaking 初始化一个漏桶
