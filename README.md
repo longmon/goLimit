@@ -1,6 +1,14 @@
 # goLimit
 漏桶算法，令牌桶算法实现
 
+### 下载安装
+```
+go get -u github.com/longmon/goLimit
+
+//或使用glide
+glide get github.com/longmon/goLimit
+```
+
 ### 漏桶算法应用示例
 ```go
 import(
