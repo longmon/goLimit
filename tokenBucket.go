@@ -23,7 +23,6 @@ type Bucket struct {
 	leaky *leaking
 	rate  uint64
 	err   error
-	one   *sync.Once
 }
 
 // InitBucket 初始化一个令牌桶实现
@@ -36,24 +35,19 @@ func InitBucket(size int, rate uint64) *Bucket {
 	}
 	bucket := new(Bucket)
 	bucket.chant = make(chan Token, size)
-	bucket.leaky = NewLeaking(rate).WithSleep()
+	bucket.leaky = NewLeaking(rate)
 	bucket.err = errors.New("Empty Bucket!")
 	bucket.rate = rate
-	bucket.one = &sync.Once{}
+	go bucket.produce()
 	return bucket
 }
 
-// Produce 以恒定速率往桶里面放令牌
-// 此函数多次执行无效
-func (bucket *Bucket) Produce() {
-	bucket.one.Do(func() {
-		bucket.doProduceOnce()
-	})
-}
-
-func (bucket *Bucket) doProduceOnce() {
+//以恒定速率往桶里面放令牌
+func (bucket *Bucket) produce() {
+	bucket.Lock()
+	defer bucket.Unlock()
 	for {
-		t, _ := bucket.leaky.Take()
+		t, _ := bucket.leaky.Wait()
 		select {
 		case bucket.chant <- Token{t: *t}:
 		}

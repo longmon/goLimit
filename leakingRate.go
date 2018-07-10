@@ -27,15 +27,7 @@ func NewLeaking(rate uint64) *leaking {
 	l := new(leaking)
 	l.rate = time.Second / time.Duration(rate)
 	l.last = time.Now()
-	l.sleep = false
 	l.err = errors.New("rate limited")
-	return l
-}
-
-// WithoutSleep 速率限制时间内不等待,直接返回 error
-// depreated
-func (l *leaking) WithSleep() *leaking {
-	l.sleep = true
 	return l
 }
 
@@ -49,10 +41,10 @@ func (l *leaking) Wait() *time.Time {
 	if sleep > 0 {
 		time.Sleep(sleep)
 		l.last = now.Add(sleep)
-	}else{
+	} else {
 		l.last = now
 	}
-	
+
 	return &l.last
 }
 
