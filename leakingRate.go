@@ -10,11 +10,10 @@ import (
 const defaultRateLimit uint64 = 100
 
 type leaking struct {
-	rate  time.Duration //每个请求花费的时间
-	last  time.Time     //上次请求发生的时间
-	sleep bool          //等待返回 depreated
-	err   error         //错误类型， 因为只有一种错误类型，所以在创建的时候初始了，免得每次Take都创建
-	sync.RWMutex
+	sync.RWMutex               //同步锁
+	rate         time.Duration //每个请求花费的时间
+	last         time.Time     //上次请求发生的时间
+	err          error         //错误类型， 因为只有一种错误类型，所以在创建的时候初始了，免得每次Take都创建
 }
 
 // NewLeaking 初始化一个漏桶
@@ -27,15 +26,7 @@ func NewLeaking(rate uint64) *leaking {
 	l := new(leaking)
 	l.rate = time.Second / time.Duration(rate)
 	l.last = time.Now()
-	l.sleep = false
 	l.err = errors.New("rate limited")
-	return l
-}
-
-// WithoutSleep 速率限制时间内不等待,直接返回 error
-// depreated
-func (l *leaking) WithSleep() *leaking {
-	l.sleep = true
 	return l
 }
 
@@ -49,10 +40,10 @@ func (l *leaking) Wait() *time.Time {
 	if sleep > 0 {
 		time.Sleep(sleep)
 		l.last = now.Add(sleep)
-	}else{
+	} else {
 		l.last = now
 	}
-	
+
 	return &l.last
 }
 
