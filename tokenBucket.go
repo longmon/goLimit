@@ -11,18 +11,21 @@ var (
 	defaultBucketGenRate uint64 = 100
 )
 
+// Token 令牌
 type Token struct {
 	t time.Time
 }
 
+// Bucket 令牌桶
 type Bucket struct {
+	sync.RWMutex
 	chant chan Token
 	leaky *leaking
 	rate  uint64
 	err   error
-	one   *sync.Once
 }
 
+// InitBucket 初始化一个令牌桶实现
 func InitBucket(size int, rate uint64) *Bucket {
 	if size <= 0 {
 		size = defaultBucketSize
@@ -32,28 +35,26 @@ func InitBucket(size int, rate uint64) *Bucket {
 	}
 	bucket := new(Bucket)
 	bucket.chant = make(chan Token, size)
-	bucket.leaky = NewLeaking(rate).WithSleep()
+	bucket.leaky = NewLeaking(rate)
 	bucket.err = errors.New("Empty Bucket!")
 	bucket.rate = rate
-	bucket.one = &sync.Once{}
+	go bucket.produce()
 	return bucket
 }
 
-func (bucket *Bucket) Produce() {
-	bucket.one.Do(func() {
-		bucket.doProduceOnce()
-	})
-}
-
-func (bucket *Bucket) doProduceOnce() {
+//以恒定速率往桶里面放令牌
+func (bucket *Bucket) produce() {
+	bucket.Lock()
+	defer bucket.Unlock()
 	for {
-		t, _ := bucket.leaky.Take()
+		t, _ := bucket.leaky.Wait()
 		select {
 		case bucket.chant <- Token{t: *t}:
 		}
 	}
 }
 
+// Get 从令牌桶里面取出一个令牌，不阻塞，如果令牌桶为空，返回nil,bucket.err
 func (bucket *Bucket) Take() (*Token, error) {
 	select {
 	case token := <-bucket.chant:
@@ -63,6 +64,7 @@ func (bucket *Bucket) Take() (*Token, error) {
 	}
 }
 
+// Wait 阻塞等待令牌
 func (bucket *Bucket) Wait() (*Token, error) {
 	select {
 	case token := <-bucket.chant:
@@ -71,6 +73,7 @@ func (bucket *Bucket) Wait() (*Token, error) {
 	return nil, bucket.err
 }
 
+// Info 返回令牌桶令牌
 func (bucket *Bucket) Info() map[string]int {
 	info := make(map[string]int, 3)
 	info["len"] = len(bucket.chant)
